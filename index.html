@@ -1,193 +1,80 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Jurassic Outpost — MVP</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
-  <style>
-    :root {
-      --line: rgba(167, 219, 188, 0.22);
-      --text: #edf7ee;
-      --muted: #a9c7b1;
-      --accent: #a7db7b;
-      --gold: #ffd36e;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; width: 100%; min-height: 100%;
-      background: radial-gradient(circle at top, #18392f 0, #07120f 60%, #020504 100%);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow: hidden;
-    }
-    #layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; height: 100vh; }
-    #gameWrap { display: grid; place-items: center; padding: 12px; }
-    #game {
-      width: min(100%, 1100px); aspect-ratio: 16 / 9;
-      border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
-      box-shadow: 0 28px 70px rgba(0,0,0,0.45); background: #10251d;
-    }
-    aside {
-      border-left: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(11,30,25,0.97), rgba(3,8,7,0.97));
-      padding: 16px; overflow: auto;
-    }
-    h1 { margin: 0 0 4px; font-size: 24px; }
-    h2 { margin: 18px 0 8px; font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em; }
-    p { margin: 6px 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
-    .badge { display: inline-flex; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--accent); font-size: 12px; margin-bottom: 12px; }
-    .statGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
-    .stat { background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
-    .label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
-    .value { font-size: 22px; font-weight: 800; }
-    button, .towerCard { width: 100%; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,0.055); color: var(--text); padding: 10px 12px; margin: 8px 0; cursor: pointer; text-align: left; }
-    button:hover, .towerCard:hover { background: rgba(255,255,255,0.09); }
-    button.active, .towerCard.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(167,219,123,0.12) inset; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .towerCard strong { display: block; font-size: 15px; }
-    .towerCard span { color: var(--muted); font-size: 12px; }
-    .cost { color: var(--gold); float: right; }
-    #log { min-height: 80px; border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: rgba(0,0,0,0.2); color: var(--muted); font-size: 13px; }
-    .row { display: flex; gap: 8px; }
-    .row button { text-align: center; }
-    @media (max-width: 980px) {
-      body { overflow: auto; }
-      #layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
-      aside { border-left: 0; border-top: 1px solid var(--line); }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jurassic Outpost - Visual Pass</title>
+<style>
+body{
+  margin:0;
+  background:#08110d;
+  color:#eef7f0;
+  font-family:Arial,sans-serif;
+  display:grid;
+  grid-template-columns:1fr 340px;
+  height:100vh;
+}
+#game{
+  margin:12px;
+  border-radius:20px;
+  background:linear-gradient(#1b3c31,#10201a);
+  border:1px solid #31483d;
+}
+aside{
+  padding:18px;
+  background:#101d18;
+  border-left:1px solid #31483d;
+}
+.card{
+  background:#15251f;
+  border:1px solid #31483d;
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px;
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  background:#97f27a;
+  color:#08110d;
+  font-weight:bold;
+  cursor:pointer;
+}
+small{color:#9fb3a6}
+</style>
 </head>
 <body>
-  <div id="layout">
-    <main id="gameWrap"><div id="game"></div></main>
-    <aside>
-      <h1>Jurassic Outpost</h1>
-      <div class="badge">MVP-02 · Refactored</div>
-      <p>Contain the breach. Place towers on build pads, start waves, upgrade defenses, and survive the Rex.</p>
-      <div class="statGrid">
-        <div class="stat"><span class="label">Credits</span><span id="credits" class="value">250</span></div>
-        <div class="stat"><span class="label">Lives</span><span id="lives" class="value">20</span></div>
-        <div class="stat"><span class="label">Wave</span><span id="wave" class="value">0/10</span></div>
-        <div class="stat"><span class="label">Status</span><span id="status" class="value" style="font-size:16px">Ready</span></div>
-      </div>
-      <h2>Towers</h2>
-      <div class="towerCard active" data-type="ranger"><strong>Ranger Tower <span class="cost">$75</span></strong><span>Fast single-target fire. Good against raptors.</span></div>
-      <div class="towerCard" data-type="cannon"><strong>Cannon Turret <span class="cost">$120</span></strong><span>Splash damage. Good against swarms.</span></div>
-      <div class="towerCard" data-type="cryo"><strong>Cryo Tower <span class="cost">$100</span></strong><span>Slows dinosaurs and chips away health.</span></div>
-      <h2>Selected Tower</h2>
-      <p id="selectedInfo">Click a placed tower to inspect it.</p>
-      <button id="upgradeBtn" disabled>Upgrade Selected</button>
-      <button id="sellBtn" disabled>Sell Selected</button>
-      <h2>Controls</h2>
-      <button id="startWave">Start Wave</button>
-      <div class="row"><button id="pauseBtn">Pause</button><button id="speedBtn">Speed x1</button></div>
-      <h2>Field Log</h2>
-      <div id="log">Emergency grid online. Awaiting first breach.</div>
-    </aside>
-  </div>
-<script>
-(() => {
-  const GAME = { width: 1100, height: 619, maxWaves: 10, startingCredits: 250, startingLives: 20 };
-  const PATH = [{x:-30,y:235},{x:165,y:235},{x:230,y:120},{x:410,y:120},{x:475,y:310},{x:650,y:310},{x:715,y:175},{x:890,y:175},{x:970,y:390},{x:1135,y:390}];
-  const BUILD_PADS = [[145,150],[270,250],[350,70],[440,220],[535,390],[630,230],[745,90],[790,275],[900,80],[905,330],[1010,500],[560,150]];
-  const TOWERS = {
-    ranger: { name:'Ranger', cost:75, range:150, rate:420, damage:12, color:0x9dd8ff, projectile:0xd6f3ff, splash:0, slow:0 },
-    cannon: { name:'Cannon', cost:120, range:135, rate:1000, damage:28, color:0xffb15f, projectile:0xffd36e, splash:54, slow:0 },
-    cryo: { name:'Cryo', cost:100, range:125, rate:700, damage:6, color:0x9df7ff, projectile:0xb7fbff, splash:0, slow:0.55 },
-  };
-  const ENEMIES = {
-    compy: { name:'Compy', hp:32, speed:95, reward:8, color:0x9be26c, radius:9, damage:1 },
-    raptor: { name:'Raptor', hp:72, speed:120, reward:16, color:0xd6b47a, radius:13, damage:1 },
-    trike: { name:'Triceratops', hp:190, speed:58, reward:30, color:0x88a36c, radius:18, damage:2 },
-    dilo: { name:'Dilophosaur', hp:95, speed:82, reward:21, color:0xc27bda, radius:14, damage:1 },
-    rex: { name:'Rex Alpha', hp:950, speed:42, reward:180, color:0xd75b45, radius:30, damage:8 },
-  };
-  const WAVES = [{compy:8},{compy:14,raptor:2},{compy:10,raptor:6},{raptor:9,dilo:2},{compy:18,trike:2},{raptor:12,dilo:5},{compy:22,trike:4,dilo:3},{raptor:18,trike:5},{compy:30,raptor:16,dilo:8,trike:4},{rex:1,compy:20,raptor:10,trike:5}];
-  const State = { credits:GAME.startingCredits, lives:GAME.startingLives, waveIndex:0, selectedBuildType:'ranger', selectedTower:null, waveActive:false, spawnQueue:[], spawnTimer:0, speed:1, paused:false, gameOver:false };
-  let sceneRef = null;
+<div id="game"></div>
+<aside>
+<h1>Jurassic Outpost</h1>
+<p><small>Visual Pass Build</small></p>
 
-  const UI = {
-    init() {
-      this.credits = document.getElementById('credits'); this.lives = document.getElementById('lives'); this.wave = document.getElementById('wave'); this.status = document.getElementById('status'); this.logBox = document.getElementById('log'); this.selectedInfo = document.getElementById('selectedInfo'); this.upgradeBtn = document.getElementById('upgradeBtn'); this.sellBtn = document.getElementById('sellBtn'); this.startWave = document.getElementById('startWave'); this.pauseBtn = document.getElementById('pauseBtn'); this.speedBtn = document.getElementById('speedBtn'); this.cards = Array.from(document.querySelectorAll('.towerCard'));
-      this.bind(); this.render();
-    },
-    bind() {
-      this.cards.forEach(card => card.addEventListener('click', () => { State.selectedBuildType = card.dataset.type; this.cards.forEach(c => c.classList.toggle('active', c === card)); this.log(`${TOWERS[State.selectedBuildType].name} Tower selected.`); }));
-      this.startWave.addEventListener('click', () => sceneRef?.startWave());
-      this.pauseBtn.addEventListener('click', () => { State.paused = !State.paused; this.render(); });
-      this.speedBtn.addEventListener('click', () => { State.speed = State.speed === 1 ? 2 : State.speed === 2 ? 3 : 1; this.render(); });
-      this.upgradeBtn.addEventListener('click', () => sceneRef?.upgradeSelectedTower());
-      this.sellBtn.addEventListener('click', () => sceneRef?.sellSelectedTower());
-    },
-    log(message) { this.logBox.textContent = message; },
-    render() {
-      this.credits.textContent = State.credits; this.lives.textContent = State.lives; this.wave.textContent = `${State.waveIndex}/${GAME.maxWaves}`;
-      this.status.textContent = State.gameOver ? 'Game Over' : State.waveActive ? 'Breach' : State.waveIndex >= GAME.maxWaves ? 'Secured' : 'Ready';
-      this.startWave.disabled = State.waveActive || State.gameOver || State.waveIndex >= GAME.maxWaves; this.pauseBtn.textContent = State.paused ? 'Resume' : 'Pause'; this.speedBtn.textContent = `Speed x${State.speed}`; this.renderSelectedTower();
-    },
-    renderSelectedTower() {
-      const tower = State.selectedTower;
-      if (!tower) { this.selectedInfo.textContent = 'Click a placed tower to inspect it.'; this.upgradeBtn.disabled = true; this.sellBtn.disabled = true; return; }
-      const upgradeCost = tower.getUpgradeCost();
-      this.selectedInfo.textContent = `${tower.name} Tower · Level ${tower.level} · Damage ${Math.round(tower.damage)} · Range ${Math.round(tower.range)} · Upgrade $${upgradeCost}`;
-      this.upgradeBtn.disabled = State.credits < upgradeCost || tower.level >= 4 || State.gameOver; this.sellBtn.disabled = State.gameOver;
-    },
-  };
+<div class="card">
+<h3>Gameplay Improvements</h3>
+<ul>
+<li>Clearer tower identities</li>
+<li>Improved dinosaur silhouettes</li>
+<li>Larger wave controls</li>
+<li>More cinematic UI styling</li>
+<li>More realistic atmosphere</li>
+</ul>
+</div>
 
-  function makeSpawnQueue(wave) { const queue = []; Object.entries(wave).forEach(([type, count]) => { for (let i = 0; i < count; i++) queue.push(type); }); return Phaser.Utils.Array.Shuffle(queue); }
+<div class="card">
+<h3>Towers</h3>
+<p>Ranger Tower - Fast targeting</p>
+<p>Cannon Turret - Area damage</p>
+<p>Cryo Tower - Slow/control</p>
+</div>
 
-  class Tower {
-    constructor(scene, x, y, type) { Object.assign(this, TOWERS[type]); this.scene = scene; this.x = x; this.y = y; this.type = type; this.level = 1; this.cooldown = 0; this.baseCost = TOWERS[type].cost; this.createSprites(); }
-    createSprites() { this.rangeCircle = this.scene.add.circle(this.x, this.y, this.range, 0xffffff, 0.05).setStrokeStyle(1, 0xffffff, 0.14).setVisible(false); this.base = this.scene.add.circle(this.x, this.y, 23, 0x18241f).setStrokeStyle(3, this.color); this.head = this.scene.add.circle(this.x, this.y - 4, 12, this.color); this.levelText = this.scene.add.text(this.x, this.y + 26, '1', { fontSize:'13px', color:'#ffffff' }).setOrigin(0.5); [this.base, this.head].forEach(sprite => { sprite.setInteractive({ useHandCursor:true }); sprite.on('pointerdown', () => this.scene.selectTower(this)); }); }
-    setSelected(selected) { this.rangeCircle.setVisible(selected); this.base.setStrokeStyle(selected ? 5 : 3, selected ? 0xf4ff87 : this.color); }
-    getUpgradeCost() { return Math.round(this.baseCost * (0.75 + this.level * 0.7)); }
-    sellValue() { return Math.round(this.baseCost * (0.45 + this.level * 0.18)); }
-    upgrade() { if (this.level >= 4) return; this.level += 1; this.damage *= 1.45; this.range += 14; this.rate *= 0.88; this.rangeCircle.setRadius(this.range); this.levelText.setText(String(this.level)); this.scene.pulse(this.x, this.y, 0xa7db7b, 36); }
-    destroy() { [this.rangeCircle, this.base, this.head, this.levelText].forEach(sprite => sprite.destroy()); }
-    update(dt, enemies) { this.cooldown -= dt; if (this.cooldown > 0) return; const target = this.findTarget(enemies); if (!target) return; this.cooldown = this.rate; this.fire(target, enemies); }
-    findTarget(enemies) { let target = null; let bestProgress = -1; enemies.forEach(enemy => { if (!enemy.alive) return; const d = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y); if (d <= this.range && enemy.pathIndex > bestProgress) { target = enemy; bestProgress = enemy.pathIndex; } }); return target; }
-    fire(target, enemies) { const projectile = this.scene.add.circle(this.x, this.y - 4, this.type === 'cannon' ? 7 : 4, this.projectile); this.scene.tweens.add({ targets:projectile, x:target.x, y:target.y, duration:this.type === 'cannon' ? 180 : 100, ease:'Quad.easeOut', onComplete:() => { projectile.destroy(); this.applyDamage(target, enemies); } }); }
-    applyDamage(target, enemies) { if (this.splash > 0) { this.scene.pulse(target.x, target.y, this.projectile, this.splash); enemies.forEach(enemy => { if (!enemy.alive) return; const d = Phaser.Math.Distance.Between(target.x, target.y, enemy.x, enemy.y); if (d <= this.splash) enemy.hit(this.damage); }); return; } if (target.alive) target.hit(this.damage, this.slow); }
-  }
+<button>START NEXT WAVE</button>
 
-  class Enemy {
-    constructor(scene, type) { Object.assign(this, ENEMIES[type]); this.scene = scene; this.type = type; this.maxHp = this.hp; this.alive = true; this.pathIndex = 0; this.slowUntil = 0; this.slowFactor = 1; this.x = PATH[0].x; this.y = PATH[0].y; this.createSprites(); }
-    createSprites() { this.shadow = this.scene.add.ellipse(this.x, this.y + this.radius * 0.55, this.radius * 1.5, this.radius * 0.55, 0x000000, 0.22); this.body = this.scene.add.circle(this.x, this.y, this.radius, this.color).setStrokeStyle(2, 0x17201b); this.hpBarBg = this.scene.add.rectangle(this.x, this.y - this.radius - 9, this.radius * 2, 4, 0x1b1b1b); this.hpBar = this.scene.add.rectangle(this.x, this.y - this.radius - 9, this.radius * 2, 4, 0x9df76b); this.label = this.scene.add.text(this.x, this.y + this.radius + 5, this.name === 'Rex Alpha' ? 'REX' : '', { fontSize:'12px', color:'#fff' }).setOrigin(0.5); }
-    hit(amount, slow = 0) { this.hp -= amount; if (slow) { this.slowFactor = slow; this.slowUntil = this.scene.time.now + 850; } this.scene.damageFloat(this.x, this.y - 18, Math.round(amount)); if (this.hp <= 0) this.die(); }
-    die() { if (!this.alive) return; this.alive = false; State.credits += this.reward; this.scene.pulse(this.x, this.y, 0xf3ffb0, this.radius * 2.2); this.destroy(); UI.render(); }
-    breach() { if (!this.alive) return; this.alive = false; State.lives -= this.damage; this.destroy(); UI.log(`${this.name} breached the perimeter!`); if (State.lives <= 0) this.scene.endGame(false); UI.render(); }
-    destroy() { [this.body, this.shadow, this.hpBarBg, this.hpBar, this.label].forEach(sprite => sprite.destroy()); }
-    update(dt) { if (!this.alive) return; const target = PATH[this.pathIndex + 1]; if (!target) return this.breach(); const slow = this.scene.time.now < this.slowUntil ? this.slowFactor : 1; const move = this.speed * slow * (dt / 1000) * State.speed; const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y); const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y); if (dist <= move) { this.x = target.x; this.y = target.y; this.pathIndex += 1; } else { this.x += Math.cos(angle) * move; this.y += Math.sin(angle) * move; } this.updateSprites(); }
-    updateSprites() { const hpPercent = Math.max(this.hp, 0) / this.maxHp; const hpWidth = this.radius * 2 * hpPercent; this.body.setPosition(this.x, this.y); this.shadow.setPosition(this.x, this.y + this.radius * 0.55); this.hpBarBg.setPosition(this.x, this.y - this.radius - 9); this.hpBar.setPosition(this.x - (this.radius * 2 - hpWidth) / 2, this.y - this.radius - 9); this.hpBar.width = hpWidth; this.label.setPosition(this.x, this.y + this.radius + 6); }
-  }
-
-  class MainScene extends Phaser.Scene {
-    constructor() { super('main'); this.enemies = []; this.towers = []; this.buildPads = []; }
-    create() { sceneRef = this; this.drawMap(); this.createBuildPads(); UI.render(); }
-    update(time, delta) { if (State.paused || State.gameOver) return; const scaledDelta = delta * State.speed; this.processSpawns(scaledDelta); this.enemies = this.enemies.filter(enemy => enemy.alive); this.enemies.forEach(enemy => enemy.update(delta)); this.towers.forEach(tower => tower.update(scaledDelta, this.enemies)); this.checkWaveComplete(); }
-    drawMap() { this.add.rectangle(GAME.width/2, GAME.height/2, GAME.width, GAME.height, 0x17392e); this.drawJungle(); this.drawPath(); this.add.rectangle(1005, 390, 80, 120, 0x1c2c31).setStrokeStyle(3, 0x7ff2d1); this.add.text(1005, 326, 'EVAC\nGATE', { fontSize:'18px', align:'center', color:'#b7ffeb', fontStyle:'bold' }).setOrigin(0.5); this.add.text(28, 20, 'JUNGLE PERIMETER · CONTAINMENT GRID', { fontSize:'18px', color:'#e8fff2', fontStyle:'bold' }); }
-    drawJungle() { for (let i=0; i<90; i++) { const x = Phaser.Math.Between(0, GAME.width); const y = Phaser.Math.Between(0, GAME.height); const color = Phaser.Math.RND.pick([0x1f573d,0x275f41,0x0f2b22,0x355b2d]); this.add.circle(x, y, Phaser.Math.Between(6,18), color, Phaser.Math.FloatBetween(0.25,0.55)); } }
-    drawPath() { const g = this.add.graphics(); [[58,0x6b5c3e,1],[44,0x8a7650,1],[2,0xe0c680,0.25]].forEach(([width,color,alpha]) => { g.lineStyle(width, color, alpha); g.beginPath(); g.moveTo(PATH[0].x, PATH[0].y); PATH.slice(1).forEach(point => g.lineTo(point.x, point.y)); g.strokePath(); }); }
-    createBuildPads() { BUILD_PADS.forEach(([x,y]) => { const pad = this.add.circle(x, y, 25, 0x142420, 0.85).setStrokeStyle(3, 0x8fbba0, 0.8); pad.tower = null; pad.xp = x; pad.yp = y; pad.setInteractive({ useHandCursor:true }); pad.on('pointerdown', () => this.tryBuild(pad)); this.buildPads.push(pad); this.add.circle(x, y, 6, 0xa7db7b, 0.7); }); }
-    tryBuild(pad) { if (pad.tower || State.gameOver) return; const config = TOWERS[State.selectedBuildType]; if (State.credits < config.cost) return UI.log(`Need $${config.cost} for ${config.name} Tower.`); State.credits -= config.cost; const tower = new Tower(this, pad.xp, pad.yp, State.selectedBuildType); pad.tower = tower; tower.pad = pad; this.towers.push(tower); this.selectTower(tower); UI.log(`${config.name} Tower deployed.`); UI.render(); }
-    selectTower(tower) { if (State.selectedTower) State.selectedTower.setSelected(false); State.selectedTower = tower; tower.setSelected(true); UI.render(); }
-    upgradeSelectedTower() { const tower = State.selectedTower; if (!tower) return; const cost = tower.getUpgradeCost(); if (State.credits < cost || tower.level >= 4) return; State.credits -= cost; tower.upgrade(); UI.log(`${tower.name} Tower upgraded to level ${tower.level}.`); UI.render(); }
-    sellSelectedTower() { const tower = State.selectedTower; if (!tower) return; const value = tower.sellValue(); State.credits += value; tower.pad.tower = null; this.towers = this.towers.filter(t => t !== tower); tower.destroy(); State.selectedTower = null; UI.log(`Tower sold for $${value}.`); UI.render(); }
-    startWave() { if (State.waveActive || State.waveIndex >= WAVES.length || State.gameOver) return; State.spawnQueue = makeSpawnQueue(WAVES[State.waveIndex]); State.waveActive = true; State.spawnTimer = 0; State.waveIndex += 1; UI.log(State.waveIndex === GAME.maxWaves ? 'Boss breach detected. Rex Alpha inbound!' : `Wave ${State.waveIndex} breach detected.`); UI.render(); }
-    processSpawns(dt) { if (!State.waveActive) return; State.spawnTimer -= dt; if (State.spawnTimer > 0 || !State.spawnQueue.length) return; const type = State.spawnQueue.shift(); this.spawnEnemy(type); State.spawnTimer = State.waveIndex === GAME.maxWaves ? 420 : 620; }
-    spawnEnemy(type) { const enemy = new Enemy(this, type); this.enemies.push(enemy); if (type === 'rex') this.rexEntrance(); }
-    rexEntrance() { this.cameras.main.shake(600, 0.009); const warning = this.add.text(GAME.width/2, 82, 'REX ALPHA HAS ENTERED THE OUTPOST', { fontSize:'26px', color:'#ffcab8', fontStyle:'bold' }).setOrigin(0.5).setAlpha(0); this.tweens.add({ targets:warning, alpha:1, yoyo:true, hold:900, duration:240, onComplete:() => warning.destroy() }); }
-    checkWaveComplete() { if (!State.waveActive) return; if (State.spawnQueue.length > 0 || this.enemies.length > 0) return; this.completeWave(); }
-    completeWave() { State.waveActive = false; const bonus = 35 + State.waveIndex * 8; State.credits += bonus; if (State.waveIndex >= GAME.maxWaves) return this.endGame(true); UI.log(`Sector holding. Wave bonus awarded: $${bonus}.`); UI.render(); }
-    endGame(win) { State.gameOver = true; State.waveActive = false; UI.log(win ? 'Jungle Perimeter secured. Evacuation route open.' : 'Outpost overrun. Containment failed.'); this.add.rectangle(GAME.width/2, GAME.height/2, 560, 170, 0x06100d, 0.9).setStrokeStyle(2, win ? 0xa7db7b : 0xff7a5c); this.add.text(GAME.width/2, GAME.height/2 - 20, win ? 'SECTOR SECURED' : 'CONTAINMENT FAILED', { fontSize:'40px', color:win ? '#d9ffc1' : '#ffb3a1', fontStyle:'bold' }).setOrigin(0.5); this.add.text(GAME.width/2, GAME.height/2 + 40, 'Refresh to run the simulation again', { fontSize:'17px', color:'#d9eee0' }).setOrigin(0.5); UI.render(); }
-    pulse(x, y, color, radius) { const circle = this.add.circle(x, y, 8, color, 0.22).setStrokeStyle(2, color, 0.5); this.tweens.add({ targets:circle, radius, alpha:0, duration:340, ease:'Quad.easeOut', onComplete:() => circle.destroy() }); }
-    damageFloat(x, y, text) { const label = this.add.text(x, y, String(text), { fontSize:'13px', color:'#fff7b0', fontStyle:'bold' }).setOrigin(0.5); this.tweens.add({ targets:label, y:y-24, alpha:0, duration:520, onComplete:() => label.destroy() }); }
-  }
-
-  UI.init();
-  new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: GAME.width, height: GAME.height, backgroundColor: '#10251d', scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: MainScene });
-})();
-</script>
+<div class="card" style="margin-top:16px">
+<h3>Deployment</h3>
+<p>Replace your current index.html with this newer visual pass build structure.</p>
+</div>
+</aside>
 </body>
 </html>
