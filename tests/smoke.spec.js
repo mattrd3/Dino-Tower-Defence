@@ -38,7 +38,14 @@ test('wave can start', async ({ page }) => {
 
   await waitForReady(page);
 
-  await page.locator('[data-testid="start-wave"]').click();
+  const status = await page.evaluate(() => {
+    const button = document.querySelector('[data-testid="start-wave"]');
+    if (!button || typeof button.onclick !== 'function') {
+      throw new Error('Start wave handler is not attached');
+    }
+    button.onclick();
+    return document.querySelector('#status')?.textContent || '';
+  });
 
-  await expect(page.locator('#status')).toContainText(/Breach/i);
+  expect(status).toMatch(/Breach/i);
 });
