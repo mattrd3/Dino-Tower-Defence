@@ -1,0 +1,14 @@
+{
+  "name": "dino-tower-defence",
+  "version": "0.4.1",
+  "private": true,
+  "scripts": {
+    "start": "vite --host 0.0.0.0",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "vite": "^5.4.10"
+  }
+}
