@@ -8,8 +8,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
 </head>
 <body>
+<div id="titleOverlay" class="titleOverlay" data-testid="title-overlay"><div class="titleCard"><div class="eyebrow">Dinosaur Tower Defense</div><h2>Jurassic Outpost</h2><p>Hold the evacuation gate, build defenses, stack waves for bigger rewards, and unlock new sectors.</p><button id="playBtn" class="waveButton" data-testid="play-game">PLAY</button><button id="howBtn" class="actionBtn sell">How to play</button><div id="howText" class="hint hidden">Pick a tower, place it on a glowing pad, start waves, then upgrade or sell towers. Use x0.5 speed for younger players.</div></div></div>
 <div id="layout"><main id="gameWrap"><div id="game" data-testid="game"></div></main><aside>
-<h1>Jurassic Outpost</h1><div class="subtitle">MVP-10 progression systems</div>
+<h1>Jurassic Outpost</h1><div class="subtitle">MVP-11 title + mobile polish</div>
 <div class="stats"><div class="stat"><small>Credits</small><strong id="credits">350</strong></div><div class="stat"><small>Lives</small><strong id="lives">20</strong></div><div class="stat"><small>Wave</small><strong id="wave">0/10</strong></div><div class="stat"><small>Status</small><strong id="status">Ready</strong></div></div>
 <div class="sectionTitle">Campaign Progress</div><div id="campaignBox"><div class="hint">Sector: <strong id="sectorName">Jungle Perimeter</strong></div><div class="hint">Best Wave: <strong id="bestWave">0</strong></div><div class="hint">Elite Kills: <strong id="eliteKills">0</strong></div></div>
 <div class="sectionTitle">Map Select</div><div id="mapList" class="previewRow"><span class="pill boss">Jungle Perimeter</span><span class="pill">Canyon Basin</span><span class="pill">Research Marsh</span></div>
@@ -23,6 +24,8 @@
 <div class="sectionTitle">Controls</div><div class="controlRow"><button id="pauseBtn" data-testid="pause">Pause</button><button id="speedBtn" data-testid="speed">x1</button></div>
 <div class="sectionTitle">Log</div><div id="log">Select a tower type, then place it on a glowing pad.</div>
 </aside></div>
+<button id="panelToggle" class="panelToggle" data-testid="panel-toggle">Controls</button>
 <script src="src/game.js"></script>
+<script src="src/menu.js"></script>
 </body>
 </html>
