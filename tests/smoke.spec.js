@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect, devices } = require('@playwright/test');
 
 async function waitForReady(page) {
   await page.waitForFunction(() => window.__JO_READY === true);
@@ -12,7 +12,6 @@ test('game loads without crashing', async ({ page }) => {
   });
 
   await page.goto('/');
-
   await waitForReady(page);
 
   await expect(page.locator('[data-testid="game"]')).toBeVisible();
@@ -23,7 +22,6 @@ test('game loads without crashing', async ({ page }) => {
 
 test('all tower types selectable', async ({ page }) => {
   await page.goto('/');
-
   await waitForReady(page);
 
   await page.locator('[data-testid="tower-ranger"]').click();
@@ -35,7 +33,6 @@ test('all tower types selectable', async ({ page }) => {
 
 test('wave can start', async ({ page }) => {
   await page.goto('/');
-
   await waitForReady(page);
 
   const status = await page.evaluate(() => {
@@ -48,4 +45,57 @@ test('wave can start', async ({ page }) => {
   });
 
   expect(status).toMatch(/Breach/i);
+});
+
+test('mobile portrait layout keeps controls reachable', async ({ browser }) => {
+  const context = await browser.newContext({
+    ...devices['Pixel 7'],
+    viewport: { width: 412, height: 915 }
+  });
+
+  const page = await context.newPage();
+  await page.goto('/');
+  await waitForReady(page);
+
+  await expect(page.locator('[data-testid="game"]')).toBeVisible();
+  await expect(page.locator('[data-testid="tower-ranger"]')).toBeVisible();
+  await expect(page.locator('[data-testid="upgrade"]')).toBeVisible();
+
+  await context.close();
+});
+
+test('mobile landscape layout keeps map visible', async ({ browser }) => {
+  const context = await browser.newContext({
+    ...devices['Pixel 7'],
+    viewport: { width: 915, height: 412 }
+  });
+
+  const page = await context.newPage();
+  await page.goto('/');
+  await waitForReady(page);
+
+  await expect(page.locator('[data-testid="game"]')).toBeVisible();
+  await expect(page.locator('[data-testid="tower-ranger"]')).toBeVisible();
+
+  const gameBox = await page.locator('[data-testid="game"]').boundingBox();
+  expect(gameBox.width).toBeGreaterThan(300);
+  expect(gameBox.height).toBeGreaterThan(180);
+
+  await context.close();
+});
+
+test('orientation changes preserve game visibility', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto('/');
+  await waitForReady(page);
+
+  await page.setViewportSize({ width: 915, height: 412 });
+  await page.waitForTimeout(300);
+
+  await expect(page.locator('[data-testid="game"]')).toBeVisible();
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.waitForTimeout(300);
+
+  await expect(page.locator('[data-testid="game"]')).toBeVisible();
 });
