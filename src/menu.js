@@ -14,7 +14,8 @@
     if (play && overlay) {
       play.addEventListener('click', () => {
         overlay.classList.add('hidden');
-        document.body.classList.add('panel-collapsed');
+        document.body.classList.remove('panel-collapsed');
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
       });
     }
 
@@ -37,9 +38,7 @@
       setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     });
 
-    if (window.matchMedia('(max-width: 900px)').matches) {
-      document.body.classList.add('panel-collapsed');
-    }
+    document.body.classList.remove('panel-collapsed');
     syncLabel();
   }
 
