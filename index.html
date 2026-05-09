@@ -9,8 +9,10 @@
 </head>
 <body>
 <div id="layout"><main id="gameWrap"><div id="game" data-testid="game"></div></main><aside>
-<h1>Jurassic Outpost</h1><div class="subtitle">MVP-07 modular refactor</div>
+<h1>Jurassic Outpost</h1><div class="subtitle">MVP-10 progression systems</div>
 <div class="stats"><div class="stat"><small>Credits</small><strong id="credits">350</strong></div><div class="stat"><small>Lives</small><strong id="lives">20</strong></div><div class="stat"><small>Wave</small><strong id="wave">0/10</strong></div><div class="stat"><small>Status</small><strong id="status">Ready</strong></div></div>
+<div class="sectionTitle">Campaign Progress</div><div id="campaignBox"><div class="hint">Sector: <strong id="sectorName">Jungle Perimeter</strong></div><div class="hint">Best Wave: <strong id="bestWave">0</strong></div><div class="hint">Elite Kills: <strong id="eliteKills">0</strong></div></div>
+<div class="sectionTitle">Map Select</div><div id="mapList" class="previewRow"><span class="pill boss">Jungle Perimeter</span><span class="pill">Canyon Basin</span><span class="pill">Research Marsh</span></div>
 <div class="sectionTitle">Next Wave Intel</div><div id="wavePreview"><strong id="previewTitle">Wave 1</strong><div class="previewRow" id="previewList"></div><div class="hint" id="previewHint">Prepare defenses before starting.</div></div>
 <button class="waveButton" id="startWave" data-testid="start-wave">START NEXT WAVE</button>
 <div class="sectionTitle">Build Defenses</div>
