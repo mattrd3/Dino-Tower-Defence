@@ -1,6 +1,11 @@
 (() => {
   const byId = id => document.getElementById(id);
 
+  function relayoutGame() {
+    window.dispatchEvent(new Event('resize'));
+    if (window.__JO_SCENE?.scale?.refresh) window.__JO_SCENE.scale.refresh();
+  }
+
   function initTitleOverlay() {
     const overlay = byId('titleOverlay');
     const play = byId('playBtn');
@@ -15,7 +20,7 @@
       play.addEventListener('click', () => {
         overlay.classList.add('hidden');
         document.body.classList.remove('panel-collapsed');
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        setTimeout(relayoutGame, 80);
       });
     }
 
@@ -35,15 +40,38 @@
     toggle.addEventListener('click', () => {
       document.body.classList.toggle('panel-collapsed');
       syncLabel();
-      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+      setTimeout(relayoutGame, 80);
     });
 
     document.body.classList.remove('panel-collapsed');
     syncLabel();
   }
 
+  function initOrientationHandling() {
+    ['resize', 'orientationchange'].forEach(eventName => {
+      window.addEventListener(eventName, () => {
+        setTimeout(relayoutGame, 120);
+        setTimeout(relayoutGame, 420);
+      });
+    });
+  }
+
+  function initSafeMapSwitching() {
+    const mapList = byId('mapList');
+    if (!mapList) return;
+
+    mapList.addEventListener('click', event => {
+      const pill = event.target.closest('.pill');
+      if (!pill || pill.textContent.includes('🔒')) return;
+      setTimeout(() => window.location.reload(), 80);
+    });
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     initTitleOverlay();
     initMobilePanel();
+    initOrientationHandling();
+    initSafeMapSwitching();
+    setTimeout(relayoutGame, 120);
   });
 })();
