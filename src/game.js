@@ -6,6 +6,7 @@ const PATH = [
 ];
 
 const PAD_POS = [[190,150],[330,290],[450,80],[530,250],[670,470],[760,270],[930,120],[980,340],[1080,110],[1080,420]];
+const SPEEDS = [0.5,1,2,3];
 
 const TOWERS = {
   ranger:{name:'Ranger',path:'Sharpshooter',type:'pierce',cost:75,color:0x9fdcff,range:175,damage:14,rate:430,barrel:0xeafaff,perk:'Anti-light precision'},
@@ -28,12 +29,13 @@ const WAVES = [
   {compy:24,raptor:14,dilo:7,trike:4},{rex:1,compy:18,raptor:10,trike:4}
 ];
 
-const STATE = {credits:350,lives:20,wave:0,maxWaves:10,type:'ranger',selected:null,active:false,queue:[],timer:0,speed:1,paused:false,over:false,elitesDefeated:0};
+const STATE = {credits:350,lives:20,wave:0,maxWaves:10,type:'ranger',selected:null,active:false,queue:[],timer:0,speed:1,paused:false,over:false,elitesDefeated:0,activeWaves:0};
 let sceneRef;
 const el = id => document.getElementById(id);
 
 function effectiveDamage(base, towerType, enemyDef){ return Math.max(1, base * (enemyDef.resist?.[towerType] ?? 1)); }
 function formatResist(def){ return `${def.armour}: P${Math.round((def.resist.pierce||1)*100)} B${Math.round((def.resist.blast||1)*100)} F${Math.round((def.resist.frost||1)*100)}`; }
+function speedLabel(){ return STATE.speed === 0.5 ? 'x0.5' : `x${STATE.speed}`; }
 
 const UI = {
   init(){
@@ -43,26 +45,27 @@ const UI = {
     this.upgrade.onclick = () => sceneRef?.upgradeSelected();
     this.sell.onclick = () => sceneRef?.sellSelected();
     this.pause.onclick = () => { STATE.paused = !STATE.paused; this.render(); };
-    this.speed.onclick = () => { STATE.speed = STATE.speed === 1 ? 2 : STATE.speed === 2 ? 3 : 1; this.render(); };
+    this.speed.onclick = () => { const i=SPEEDS.indexOf(STATE.speed); STATE.speed = SPEEDS[(i+1)%SPEEDS.length]; this.log(STATE.speed === 0.5 ? 'Child speed enabled: slower waves for younger players.' : `Speed set to ${speedLabel()}.`); this.render(); };
     this.render();
   },
   log(message){ this.logBox.textContent = message; },
   renderPreview(){
     const def = WAVES[Math.min(STATE.wave, WAVES.length-1)];
-    this.previewTitle.textContent = STATE.wave >= STATE.maxWaves ? 'Final wave complete' : `Wave ${STATE.wave+1}`;
+    this.previewTitle.textContent = STATE.wave >= STATE.maxWaves ? 'All waves launched' : `Next: Wave ${STATE.wave+1}`;
     this.previewList.innerHTML='';
     Object.entries(def||{}).forEach(([type,count])=>{
       const span=document.createElement('span'); span.className='pill '+(type==='rex'?'boss':'');
       span.textContent=`${ENEMIES[type].name} x${count} · ${formatResist(ENEMIES[type])}`; this.previewList.appendChild(span);
     });
     const eliteText = STATE.wave >= 5 ? ' Elite variants may appear.' : '';
-    this.previewHint.textContent = STATE.wave===9 ? 'Boss warning: Rex Alpha will breach the perimeter.' : STATE.active ? 'Wave in progress.' : `Prepare defenses before starting.${eliteText}`;
+    this.previewHint.textContent = STATE.wave>=STATE.maxWaves ? 'Survive the remaining dinosaurs.' : STATE.activeWaves > 0 ? `You can launch early. Active waves: ${STATE.activeWaves}.` : `Prepare defenses before starting.${eliteText}`;
   },
   render(){
     this.credits.textContent=STATE.credits; this.lives.textContent=STATE.lives; this.wave.textContent=`${STATE.wave}/${STATE.maxWaves}`;
-    this.status.textContent=STATE.over?'Over':STATE.active?'Breach':STATE.wave>=STATE.maxWaves?'Secured':'Ready';
-    this.start.disabled=STATE.active||STATE.over||STATE.wave>=STATE.maxWaves;
-    this.pause.textContent=STATE.paused?'Resume':'Pause'; this.speed.textContent=`x${STATE.speed}`;
+    this.status.textContent=STATE.over?'Over':STATE.activeWaves>0?'Breach':STATE.wave>=STATE.maxWaves?'Secured':'Ready';
+    this.start.disabled=STATE.over||STATE.wave>=STATE.maxWaves;
+    this.start.textContent = STATE.activeWaves > 0 && STATE.wave < STATE.maxWaves ? 'LAUNCH NEXT WAVE EARLY' : 'START NEXT WAVE';
+    this.pause.textContent=STATE.paused?'Resume':'Pause'; this.speed.textContent=speedLabel();
     this.cards.forEach(card => card.classList.toggle('unaffordable', STATE.credits < TOWERS[card.dataset.type].cost)); this.renderPreview();
     if(!STATE.selected){ const d=TOWERS[STATE.type]; this.info.innerHTML=`Build mode: <strong>${d.name}</strong><br>${d.path} path · ${d.type}<br>${d.perk}<br>Click a glowing pad to place.`; this.upgrade.disabled=true; this.sell.disabled=true; return; }
     const t=STATE.selected, cost=t.upgradeCost();
@@ -104,7 +107,7 @@ class Enemy {
 class GameScene extends Phaser.Scene {
   constructor(){ super('main'); this.enemies=[]; this.towers=[]; this.pads=[]; }
   create(){ sceneRef=this; window.__JO_SCENE=this; this.drawMap(); this.createPads(); UI.render(); this.highlightPads(); window.__JO_READY=true; }
-  update(time,delta){ if(STATE.paused||STATE.over)return; this.spawn(delta); this.enemies=this.enemies.filter(e=>e.alive); this.enemies.forEach(e=>e.update(delta)); this.towers.forEach(t=>t.update(delta,this.enemies)); if(STATE.active&&STATE.queue.length===0&&this.enemies.length===0)this.waveComplete(); }
+  update(time,delta){ if(STATE.paused||STATE.over)return; this.spawn(delta); this.enemies=this.enemies.filter(e=>e.alive); this.enemies.forEach(e=>e.update(delta)); this.towers.forEach(t=>t.update(delta,this.enemies)); if(STATE.activeWaves>0&&STATE.queue.length===0&&this.enemies.length===0)this.allWavesComplete(); }
   drawMap(){ this.add.rectangle(640,360,1280,720,0x17372c); for(let i=0;i<170;i++){this.add.circle(Phaser.Math.Between(0,1280),Phaser.Math.Between(0,720),Phaser.Math.Between(5,26),Phaser.Math.RND.pick([0x244e3d,0x2f5e48,0x173026,0x3b5b31]),Phaser.Math.FloatBetween(.2,.55));} for(let i=0;i<40;i++){this.add.rectangle(Phaser.Math.Between(0,1280),Phaser.Math.Between(0,720),Phaser.Math.Between(6,22),Phaser.Math.Between(4,12),0x2c2419,.22).setRotation(Phaser.Math.FloatBetween(0,3.14));} const g=this.add.graphics(); [[78,0x473b27,1],[60,0x6b583a,1],[44,0x9a8158,1],[3,0xe0c680,.22]].forEach(([w,c,a])=>{g.lineStyle(w,c,a);g.beginPath();g.moveTo(PATH[0].x,PATH[0].y);PATH.slice(1).forEach(p=>g.lineTo(p.x,p.y));g.strokePath();}); this.add.rectangle(1170,500,124,144,0x243239).setStrokeStyle(4,0x7fffd0); this.add.rectangle(1170,500,86,102,0x101c1d,.4).setStrokeStyle(2,0xb5fff0,.5); this.add.text(1170,430,'EVAC\nGATE',{fontSize:'24px',align:'center',fontStyle:'bold'}).setOrigin(.5); this.add.text(24,24,'JUNGLE PERIMETER - CONTAINMENT BREACH',{fontSize:'24px',fontStyle:'bold',color:'#effff4'}); this.add.rectangle(640,360,1280,720,0x020605,.12); }
   createPads(){ PAD_POS.forEach(([x,y])=>{ const pad=this.add.circle(x,y,35,0x22362e).setStrokeStyle(5,0x95c9a5); pad.xp=x; pad.yp=y; pad.tower=null; pad.setInteractive({useHandCursor:true}); pad.on('pointerdown',()=>this.buildTower(pad)); pad.glow=this.add.circle(x,y,47,0x9cff7d,.04); pad.core=this.add.circle(x,y,10,0xa7ff8f,.72); this.pads.push(pad); }); }
   highlightPads(){ this.pads.forEach(p=>{ const affordable=STATE.credits>=TOWERS[STATE.type].cost&&!p.tower; p.setStrokeStyle(affordable?6:4,affordable?0xb8ff9d:0x547060); if(p.glow)p.glow.setAlpha(affordable?.12:.025); }); }
@@ -112,11 +115,11 @@ class GameScene extends Phaser.Scene {
   selectTower(tower){ if(STATE.selected)STATE.selected.select(false); STATE.selected=tower; tower.select(true); UI.render(); }
   upgradeSelected(){ const tower=STATE.selected; if(!tower)return; const cost=tower.upgradeCost(); if(STATE.credits<cost||tower.level>=5)return; STATE.credits-=cost; tower.upgrade(); UI.log(`${tower.def.name} upgraded on ${tower.def.path} path.`); UI.render(); this.highlightPads(); }
   sellSelected(){ const tower=STATE.selected; if(!tower)return; STATE.credits+=tower.sellValue(); tower.pad.tower=null; this.towers=this.towers.filter(t=>t!==tower); tower.destroy(); STATE.selected=null; UI.log('Tower sold.'); UI.render(); this.highlightPads(); }
-  startWave(){ if(STATE.active||STATE.over||STATE.wave>=STATE.maxWaves)return; const def=WAVES[STATE.wave]; STATE.queue=[]; Object.entries(def).forEach(([type,count])=>{for(let i=0;i<count;i++)STATE.queue.push(type);}); Phaser.Utils.Array.Shuffle(STATE.queue); STATE.wave++; STATE.active=true; STATE.timer=0; if(STATE.wave===6)UI.log('Elite variants now detected in the jungle.'); if(STATE.wave===10)this.bossWarning(); else UI.log(`Wave ${STATE.wave} incoming.`); UI.render(); }
+  startWave(){ if(STATE.over||STATE.wave>=STATE.maxWaves)return; const def=WAVES[STATE.wave]; Object.entries(def).forEach(([type,count])=>{for(let i=0;i<count;i++)STATE.queue.push(type);}); Phaser.Utils.Array.Shuffle(STATE.queue); STATE.wave++; STATE.active=true; STATE.activeWaves++; STATE.timer=Math.min(STATE.timer,0); if(STATE.wave===6)UI.log('Elite variants now detected in the jungle.'); if(STATE.wave===10)this.bossWarning(); else UI.log(`Wave ${STATE.wave} launched. Active waves: ${STATE.activeWaves}.`); UI.render(); }
   bossWarning(){ const bg=this.add.rectangle(640,110,680,76,0x3b120d,.88).setStrokeStyle(3,0xff886e); const tx=this.add.text(640,110,'⚠ REX ALPHA INBOUND ⚠',{fontSize:'34px',fontStyle:'bold',color:'#ffd1c4'}).setOrigin(.5); this.cameras.main.shake(700,.009); this.tweens.add({targets:[bg,tx],alpha:0,delay:1300,duration:700,onComplete:()=>{bg.destroy();tx.destroy();}}); }
-  spawn(delta){ if(!STATE.active)return; STATE.timer-=delta*STATE.speed; if(STATE.timer>0||STATE.queue.length===0)return; const enemy=new Enemy(this,STATE.queue.shift()); this.enemies.push(enemy); if(enemy.elite)this.floatText(enemy.x+75,enemy.y-20,'ELITE',0xffd86d); if(enemy.type==='rex')this.cameras.main.shake(600,.008); STATE.timer=STATE.wave===STATE.maxWaves?430:650; }
-  waveComplete(){ STATE.active=false; STATE.credits+=45+STATE.wave*8+STATE.elitesDefeated*5; if(STATE.wave>=STATE.maxWaves){this.endGame(true);return;} UI.log(`Wave cleared. Elite takedowns: ${STATE.elitesDefeated}.`); UI.render(); this.highlightPads(); }
-  endGame(win){ STATE.over=true; STATE.active=false; UI.log(win?`Jungle secured. Elite takedowns: ${STATE.elitesDefeated}.`:'Outpost overrun.'); this.add.rectangle(640,360,620,180,0x06100d,.9).setStrokeStyle(3,win?0xa7ff8f:0xff7760); this.add.text(640,340,win?'SECTOR SECURED':'CONTAINMENT FAILED',{fontSize:'44px',fontStyle:'bold',color:win?'#d9ffc1':'#ffb3a1'}).setOrigin(.5); UI.render(); }
+  spawn(delta){ if(STATE.activeWaves<=0)return; STATE.timer-=delta*STATE.speed; if(STATE.timer>0||STATE.queue.length===0)return; const enemy=new Enemy(this,STATE.queue.shift()); this.enemies.push(enemy); if(enemy.elite)this.floatText(enemy.x+75,enemy.y-20,'ELITE',0xffd86d); if(enemy.type==='rex')this.cameras.main.shake(600,.008); STATE.timer=STATE.wave===STATE.maxWaves?430:650; }
+  allWavesComplete(){ STATE.active=false; STATE.activeWaves=0; STATE.credits+=45+STATE.wave*8+STATE.elitesDefeated*5; if(STATE.wave>=STATE.maxWaves){this.endGame(true);return;} UI.log(`Area clear. You can launch the next wave. Elite takedowns: ${STATE.elitesDefeated}.`); UI.render(); this.highlightPads(); }
+  endGame(win){ STATE.over=true; STATE.active=false; STATE.activeWaves=0; UI.log(win?`Jungle secured. Elite takedowns: ${STATE.elitesDefeated}.`:'Outpost overrun.'); this.add.rectangle(640,360,620,180,0x06100d,.9).setStrokeStyle(3,win?0xa7ff8f:0xff7760); this.add.text(640,340,win?'SECTOR SECURED':'CONTAINMENT FAILED',{fontSize:'44px',fontStyle:'bold',color:win?'#d9ffc1':'#ffb3a1'}).setOrigin(.5); UI.render(); }
   pulse(x,y,color,r){ const c=this.add.circle(x,y,8,color,.22).setStrokeStyle(2,color,.5); this.tweens.add({targets:c,radius:r,alpha:0,duration:340,onComplete:()=>c.destroy()}); }
   floatText(x,y,text,color){ const t=this.add.text(x,y,text,{fontSize:'13px',fontStyle:'bold',color:'#'+color.toString(16).padStart(6,'0')}).setOrigin(.5).setAlpha(.95); this.tweens.add({targets:t,y:y-24,alpha:0,duration:700,onComplete:()=>t.destroy()}); }
 }
