@@ -1,11 +1,42 @@
 window.__JO_READY = false;
 
-const MAPS = [{id:'jungle',name:'Jungle Perimeter'},{id:'canyon',name:'Canyon Basin'},{id:'marsh',name:'Research Marsh'}];
+const MAPS = [
+  {id:'jungle',name:'Jungle Perimeter'},
+  {id:'canyon',name:'Canyon Basin'},
+  {id:'marsh',name:'Research Marsh'},
+  {id:'volcano',name:'Ember Ridge'},
+  {id:'ruins',name:'Raptor Ruins'},
+  {id:'river',name:'Floodplain Run'},
+  {id:'crater',name:'Meteor Crater'},
+  {id:'night',name:'Midnight Mire'},
+  {id:'citadel',name:'Citadel Approach'},
+  {id:'core',name:'Core Nest'}
+];
 const MAP_CONFIG = {
   jungle:{bg:0x17372c,terrain:[0x244e3d,0x2f5e48,0x173026,0x3b5b31],gate:{x:1170,y:500},path:[{x:-40,y:260},{x:220,y:260},{x:290,y:140},{x:500,y:140},{x:590,y:360},{x:820,y:360},{x:910,y:190},{x:1130,y:190},{x:1200,y:500},{x:1320,y:500}],pads:[[190,150],[330,290],[450,80],[530,250],[670,470],[760,270],[930,120],[980,340],[1080,110],[1080,420]],difficulty:1,label:'Training Sector'},
   canyon:{bg:0x3d2f22,terrain:[0x5f4730,0x7d5e3c,0x3a2a1d,0xa07945],gate:{x:1165,y:210},path:[{x:-40,y:560},{x:150,y:500},{x:295,y:585},{x:420,y:410},{x:560,y:430},{x:705,y:230},{x:900,y:250},{x:1015,y:120},{x:1160,y:245},{x:1320,y:210}],pads:[[145,410],[285,455],[380,620],[505,315],[615,535],[710,335],[825,150],[920,360],[1045,85],[1120,335]],difficulty:1.08,label:'Hard Sector'},
   marsh:{bg:0x18392f,terrain:[0x14352d,0x1f4c40,0x2f5e48,0x456436],gate:{x:1160,y:545},path:[{x:-40,y:115},{x:170,y:120},{x:250,y:315},{x:420,y:315},{x:520,y:520},{x:690,y:515},{x:785,y:335},{x:970,y:335},{x:1060,y:545},{x:1320,y:545}],pads:[[150,220],[270,80],[345,395],[470,205],[555,615],[675,420],[790,235],[920,445],[1065,310],[1135,620]],difficulty:1.15,label:'Expert Sector'}
 };
+MAP_CONFIG.volcano={...MAP_CONFIG.canyon,bg:0x2f1c15,terrain:[0x4a2114,0x6a2a19,0x7f3a21,0x9a5a29],difficulty:1.2,label:'Volcanic Front'};
+MAP_CONFIG.ruins={...MAP_CONFIG.jungle,bg:0x213027,terrain:[0x2d3f33,0x4b5749,0x5f6e56,0x1a221c],difficulty:1.28,label:'Ancient Ruins'};
+MAP_CONFIG.river={...MAP_CONFIG.marsh,bg:0x163447,terrain:[0x1f4f68,0x275a74,0x1f3b4b,0x4b7e92],difficulty:1.33,label:'Flood Delta'};
+MAP_CONFIG.crater={...MAP_CONFIG.canyon,bg:0x27272e,terrain:[0x3b3b45,0x5f5f6e,0x191922,0x868694],difficulty:1.38,label:'Impact Zone'};
+MAP_CONFIG.night={...MAP_CONFIG.marsh,bg:0x101631,terrain:[0x1c2452,0x2f3b7d,0x0f1230,0x4550a1],difficulty:1.45,label:'Night Ops'};
+MAP_CONFIG.citadel={...MAP_CONFIG.jungle,bg:0x1b2d31,terrain:[0x25474c,0x2f6469,0x123337,0x4f8388],difficulty:1.53,label:'Citadel Outer Ring'};
+MAP_CONFIG.core={...MAP_CONFIG.volcano,bg:0x2c1218,terrain:[0x490f1f,0x7b1f32,0x2a0812,0xb23a52],difficulty:1.62,label:'Alpha Nest'};
+const STORY_BEATS = [
+  'Chief, welcome to Outpost Laughing Lizard. The dinos are rude and punctual.',
+  'Sector clear. Someone stole our lunch crate. Traces point to smarter raptors.',
+  'Canyon chatter confirms an alpha command chain. Yes, dinos are doing strategy now.',
+  'Marsh sensors detect a heat plume ahead. Bring the deodorant and the cannons.',
+  'Volcanic ash jams optics, but morale remains absurdly high.',
+  'Ruins recovered. Old carvings show a giant crowned rex. We are not thrilled.',
+  'Floodplain defenses held. The pack is learning our tower timings.',
+  'Crater secured. Meteor minerals are mutating compies into turbo goblins.',
+  'Night operation complete. Unknown signal keeps guiding enemy waves.',
+  'Citadel breached. The Alpha Nest is one push away. Everybody breathe.',
+  'Cliffhanger: the Nest is empty… and a distant roar answers from offshore.'
+];
 const SPEEDS = [0.5,1,2,3];
 const SAVE_KEY = 'jurassic-outpost-progress-v1';
 const ENEMY_HP_MULTIPLIER = 1.25;
@@ -39,19 +70,23 @@ const mapConfig = () => MAP_CONFIG[STATE.mapId] || MAP_CONFIG.jungle;
 const route = () => mapConfig().path;
 const padPositions = () => mapConfig().pads;
 
-function loadProgress(){ try{return JSON.parse(localStorage.getItem(SAVE_KEY))||{bestWave:0,eliteKills:0,currentMap:'jungle',unlocked:['jungle'],stars:{}};}catch{return {bestWave:0,eliteKills:0,currentMap:'jungle',unlocked:['jungle'],stars:{}};} }
+function defaultProgress(){ return {bestWave:0,eliteKills:0,currentMap:'jungle',unlocked:['jungle'],stars:{},storySeen:{}}; }
+function loadProgress(){ try{const parsed=JSON.parse(localStorage.getItem(SAVE_KEY))||defaultProgress(); return {...defaultProgress(),...parsed};}catch{return defaultProgress();} }
 function saveProgress(){ localStorage.setItem(SAVE_KEY,JSON.stringify(PROGRESS)); }
 function rating(){ if(STATE.lives>=18)return 3; if(STATE.lives>=12)return 2; return 1; }
-function updateProgress(){ PROGRESS.bestWave=Math.max(PROGRESS.bestWave||0,STATE.wave); PROGRESS.eliteKills=Math.max(PROGRESS.eliteKills||0,STATE.elitesDefeated); PROGRESS.currentMap=STATE.mapId; if(!PROGRESS.unlocked)PROGRESS.unlocked=['jungle']; if(!PROGRESS.stars)PROGRESS.stars={}; if(STATE.wave>=5&&!PROGRESS.unlocked.includes('canyon'))PROGRESS.unlocked.push('canyon'); if(STATE.wave>=10&&!PROGRESS.unlocked.includes('marsh'))PROGRESS.unlocked.push('marsh'); if(STATE.wave>=STATE.maxWaves)PROGRESS.stars[STATE.mapId]=Math.max(PROGRESS.stars[STATE.mapId]||0,rating()); saveProgress(); }
+function unlockNextMap(){ const i=MAPS.findIndex(m=>m.id===STATE.mapId); const next=MAPS[i+1]; if(next&&!PROGRESS.unlocked.includes(next.id))PROGRESS.unlocked.push(next.id); }
+function updateProgress(){ PROGRESS.bestWave=Math.max(PROGRESS.bestWave||0,STATE.wave); PROGRESS.eliteKills=Math.max(PROGRESS.eliteKills||0,STATE.elitesDefeated); PROGRESS.currentMap=STATE.mapId; if(!PROGRESS.unlocked)PROGRESS.unlocked=['jungle']; if(!PROGRESS.stars)PROGRESS.stars={}; if(STATE.wave>=STATE.maxWaves){ PROGRESS.stars[STATE.mapId]=Math.max(PROGRESS.stars[STATE.mapId]||0,rating()); unlockNextMap(); } saveProgress(); }
 function effectiveDamage(base, towerType, enemyDef){ return Math.max(1, base * (enemyDef.resist?.[towerType] ?? 1)); }
 function formatResist(def){ return `${def.armour}: P${Math.round((def.resist.pierce||1)*100)} B${Math.round((def.resist.blast||1)*100)} F${Math.round((def.resist.frost||1)*100)}`; }
 function speedLabel(){ return STATE.speed === 0.5 ? 'x0.5' : `x${STATE.speed}`; }
 function mapName(){ return MAPS.find(m=>m.id===STATE.mapId)?.name||'Jungle Perimeter'; }
-function nextUnlockText(){ if(!PROGRESS.unlocked?.includes('canyon'))return 'Reach wave 5 to unlock Canyon Basin.'; if(!PROGRESS.unlocked?.includes('marsh'))return 'Clear wave 10 to unlock Research Marsh.'; return 'All sectors unlocked.'; }
+function nextMap(){ const i=MAPS.findIndex(m=>m.id===STATE.mapId); return MAPS[i+1]||null; }
+function nextUnlockText(){ const next=nextMap(); if(!next)return 'All campaign sectors cleared. Awaiting the offshore threat.'; return (PROGRESS.unlocked||[]).includes(next.id) ? `${next.name} unlocked — finish current sector to deploy.` : `Finish this sector to unlock ${next.name}.`; }
+function storyForMap(id){ const i=Math.max(0,MAPS.findIndex(m=>m.id===id)); return STORY_BEATS[i]||STORY_BEATS[0]; }
 
 const UI = {
   init(){
-    this.credits=el('credits'); this.lives=el('lives'); this.wave=el('wave'); this.status=el('status'); this.start=el('startWave'); this.info=el('selectedInfo'); this.upgrade=el('upgradeBtn'); this.sell=el('sellBtn'); this.pause=el('pauseBtn'); this.speed=el('speedBtn'); this.logBox=el('log'); this.previewTitle=el('previewTitle'); this.previewList=el('previewList'); this.previewHint=el('previewHint'); this.cards=[...document.querySelectorAll('.towerCard')]; this.sectorName=el('sectorName'); this.bestWave=el('bestWave'); this.eliteKills=el('eliteKills'); this.mapList=el('mapList');
+    this.credits=el('credits'); this.lives=el('lives'); this.wave=el('wave'); this.status=el('status'); this.start=el('startWave'); this.info=el('selectedInfo'); this.upgrade=el('upgradeBtn'); this.sell=el('sellBtn'); this.pause=el('pauseBtn'); this.speed=el('speedBtn'); this.logBox=el('log'); this.previewTitle=el('previewTitle'); this.previewList=el('previewList'); this.previewHint=el('previewHint'); this.cards=[...document.querySelectorAll('.towerCard')]; this.sectorName=el('sectorName'); this.bestWave=el('bestWave'); this.eliteKills=el('eliteKills'); this.mapList=el('mapList'); this.campaignNext=el('campaignNext');
     this.cards.forEach(card => card.onclick = () => { STATE.type = card.dataset.type; this.cards.forEach(c => c.classList.toggle('active', c === card)); this.log(`${TOWERS[STATE.type].name} selected — ${TOWERS[STATE.type].perk}.`); sceneRef?.highlightPads(); this.render(); });
     this.start.onclick = () => sceneRef?.startWave(); this.upgrade.onclick = () => sceneRef?.upgradeSelected(); this.sell.onclick = () => sceneRef?.sellSelected();
     this.pause.onclick = () => { STATE.paused = !STATE.paused; this.render(); };
@@ -59,8 +94,8 @@ const UI = {
     this.render();
   },
   log(message){ if(this.logBox)this.logBox.textContent = message; },
-  renderMaps(){ if(!this.mapList)return; this.mapList.innerHTML=''; MAPS.forEach(map=>{ const unlocked=(PROGRESS.unlocked||['jungle']).includes(map.id); const stars='★'.repeat(PROGRESS.stars?.[map.id]||0); const span=document.createElement('span'); span.className='pill '+(STATE.mapId===map.id?'boss':''); span.textContent=unlocked?`${map.name}${stars?' '+stars:''}`:`${map.name} 🔒`; span.onclick=()=>{ if(!unlocked){this.log('Map locked. Reach later waves to unlock it.');return;} if(STATE.mapId===map.id)return; STATE.mapId=map.id; PROGRESS.currentMap=map.id; saveProgress(); window.location.reload(); }; this.mapList.appendChild(span); }); },
-  renderProgress(){ if(this.sectorName)this.sectorName.textContent=`${mapName()} · ${mapConfig().label}`; if(this.bestWave)this.bestWave.textContent=PROGRESS.bestWave||0; if(this.eliteKills)this.eliteKills.textContent=PROGRESS.eliteKills||0; this.renderMaps(); },
+  renderMaps(){ if(!this.mapList)return; this.mapList.innerHTML=''; MAPS.forEach((map,index)=>{ const unlocked=(PROGRESS.unlocked||['jungle']).includes(map.id); const stars='★'.repeat(PROGRESS.stars?.[map.id]||0); const span=document.createElement('span'); span.className='pill '+(STATE.mapId===map.id?'boss':''); span.textContent=unlocked?`${index+1}. ${map.name}${stars?' '+stars:''}`:`${index+1}. ${map.name} 🔒`; span.onclick=()=>{ if(!unlocked){this.log('Map locked. Clear your current sector to unlock it.');return;} if(STATE.mapId===map.id)return; STATE.mapId=map.id; PROGRESS.currentMap=map.id; saveProgress(); window.location.reload(); }; this.mapList.appendChild(span); }); },
+  renderProgress(){ if(this.sectorName)this.sectorName.textContent=`${mapName()} · ${mapConfig().label}`; if(this.bestWave)this.bestWave.textContent=PROGRESS.bestWave||0; if(this.eliteKills)this.eliteKills.textContent=PROGRESS.eliteKills||0; if(this.campaignNext)this.campaignNext.textContent=`Next objective: ${nextUnlockText()}`; this.renderMaps(); },
   renderPreview(){
     const def = WAVES[Math.min(STATE.wave, WAVES.length-1)]; if(this.previewTitle)this.previewTitle.textContent = STATE.wave >= STATE.maxWaves ? 'All waves launched' : `Next: Wave ${STATE.wave+1}`; if(!this.previewList)return; this.previewList.innerHTML='';
     Object.entries(def||{}).forEach(([type,count])=>{ const span=document.createElement('span'); span.className='pill '+(type==='rex'?'boss':''); span.textContent=`${ENEMIES[type].name} x${count} · tougher`; this.previewList.appendChild(span); });
@@ -68,7 +103,7 @@ const UI = {
   },
   render(){
     this.credits.textContent=STATE.credits; this.lives.textContent=STATE.lives; this.wave.textContent=`${STATE.wave}/${STATE.maxWaves}`; this.status.textContent=STATE.over?'Over':STATE.activeWaves>0?'Breach':STATE.wave>=STATE.maxWaves?'Secured':'Ready'; this.start.disabled=STATE.over||STATE.wave>=STATE.maxWaves; this.start.textContent = STATE.activeWaves > 0 && STATE.wave < STATE.maxWaves ? 'LAUNCH NEXT WAVE EARLY' : 'START NEXT WAVE'; this.pause.textContent=STATE.paused?'Resume':'Pause'; this.speed.textContent=speedLabel();
-    this.cards.forEach(card => card.classList.toggle('unaffordable', STATE.credits < TOWERS[card.dataset.type].cost)); this.renderProgress(); this.renderPreview();
+    this.cards.forEach(card => card.classList.toggle('unaffordable', STATE.credits < TOWERS[card.dataset.type].cost)); this.renderProgress(); this.renderPreview(); sceneRef?.refreshInMapHud();
     if(!STATE.selected){ const d=TOWERS[STATE.type]; this.info.innerHTML=`Build mode: <strong>${d.name}</strong><br>${d.path} path · ${d.type}<br>${d.perk}<br>Click a glowing pad to place.`; this.upgrade.disabled=true; this.sell.disabled=true; return; }
     const t=STATE.selected, cost=t.upgradeCost(); this.info.innerHTML=`<strong>${t.def.name}</strong> · ${t.def.path}<br>Level ${t.level}/5 · ${t.def.type}<br>Damage ${Math.round(t.damage)} Range ${Math.round(t.range)}<br>${t.nextPerk()}<br>Upgrade $${cost}`; this.upgrade.disabled=STATE.credits<cost||t.level>=5; this.sell.disabled=false;
   }
@@ -100,10 +135,26 @@ class Enemy {
 
 class GameScene extends Phaser.Scene {
   constructor(){ super('main'); this.enemies=[]; this.towers=[]; this.pads=[]; this.mapLayers=[]; }
-  create(){ sceneRef=this; window.__JO_SCENE=this; this.drawMap(); this.createPads(); UI.render(); this.highlightPads(); window.__JO_READY=true; }
+  create(){ sceneRef=this; window.__JO_SCENE=this; this.drawMap(); this.createPads(); this.createInMapHud(); UI.render(); this.highlightPads(); this.playMissionSequence(); window.__JO_READY=true; }
   update(time,delta){ if(STATE.paused||STATE.over)return; this.spawn(delta); this.enemies=this.enemies.filter(e=>e.alive); this.enemies.forEach(e=>e.update(delta)); this.towers.forEach(t=>t.update(delta,this.enemies)); if(STATE.activeWaves>0&&STATE.queue.length===0&&this.enemies.length===0)this.allWavesComplete(); }
   clearMapLayers(){ this.mapLayers.forEach(x=>x?.destroy?.()); this.mapLayers=[]; }
-  drawMap(){ this.clearMapLayers(); const cfg=mapConfig(); this.mapLayers.push(this.add.rectangle(640,360,1280,720,cfg.bg)); for(let i=0;i<170;i++){this.mapLayers.push(this.add.circle(Phaser.Math.Between(0,1280),Phaser.Math.Between(0,720),Phaser.Math.Between(5,26),Phaser.Math.RND.pick(cfg.terrain),Phaser.Math.FloatBetween(.2,.55)));} const g=this.add.graphics(); this.mapLayers.push(g); [[78,0x473b27,1],[60,0x6b583a,1],[44,0x9a8158,1],[3,0xe0c680,.22]].forEach(([w,c,a])=>{g.lineStyle(w,c,a);g.beginPath();g.moveTo(route()[0].x,route()[0].y);route().slice(1).forEach(p=>g.lineTo(p.x,p.y));g.strokePath();}); const gate=cfg.gate; this.mapLayers.push(this.add.rectangle(gate.x,gate.y,124,144,0x243239).setStrokeStyle(4,0x7fffd0)); this.mapLayers.push(this.add.rectangle(gate.x,gate.y,86,102,0x101c1d,.4).setStrokeStyle(2,0xb5fff0,.5)); this.mapLayers.push(this.add.text(gate.x,gate.y-70,'EVAC\nGATE',{fontSize:'24px',align:'center',fontStyle:'bold'}).setOrigin(.5)); this.mapLayers.push(this.add.text(24,24,`${mapName().toUpperCase()} - ${cfg.label.toUpperCase()}`,{fontSize:'24px',fontStyle:'bold',color:'#effff4'})); this.mapLayers.push(this.add.rectangle(640,360,1280,720,0x020605,.12)); }
+  drawMap(){ this.clearMapLayers(); const cfg=mapConfig(); this.mapLayers.push(this.add.rectangle(640,360,1280,720,cfg.bg)); for(let i=0;i<170;i++){this.mapLayers.push(this.add.circle(Phaser.Math.Between(0,1280),Phaser.Math.Between(0,720),Phaser.Math.Between(5,26),Phaser.Math.RND.pick(cfg.terrain),Phaser.Math.FloatBetween(.2,.55)));} this.drawBiomeProps(STATE.mapId); const g=this.add.graphics(); this.mapLayers.push(g); [[78,0x473b27,1],[60,0x6b583a,1],[44,0x9a8158,1],[3,0xe0c680,.22]].forEach(([w,c,a])=>{g.lineStyle(w,c,a);g.beginPath();g.moveTo(route()[0].x,route()[0].y);route().slice(1).forEach(p=>g.lineTo(p.x,p.y));g.strokePath();}); const gate=cfg.gate; this.mapLayers.push(this.add.rectangle(gate.x,gate.y,124,144,0x243239).setStrokeStyle(4,0x7fffd0)); this.mapLayers.push(this.add.rectangle(gate.x,gate.y,86,102,0x101c1d,.4).setStrokeStyle(2,0xb5fff0,.5)); this.mapLayers.push(this.add.text(gate.x,gate.y-70,'EVAC\nGATE',{fontSize:'24px',align:'center',fontStyle:'bold'}).setOrigin(.5)); this.mapLayers.push(this.add.text(24,24,`${mapName().toUpperCase()} - ${cfg.label.toUpperCase()}`,{fontSize:'24px',fontStyle:'bold',color:'#effff4'})); this.mapLayers.push(this.add.rectangle(640,360,1280,720,0x020605,.12)); }
+  drawBiomeProps(mapId){
+    const addRock=(x,y,s,c)=>{this.mapLayers.push(this.add.ellipse(x,y,s*1.5,s,c,.55).setStrokeStyle(2,0x000000,.25));};
+    const addPalm=(x,y)=>{this.mapLayers.push(this.add.rectangle(x,y,8,58,0x4d3828)); this.mapLayers.push(this.add.ellipse(x-14,y-30,34,16,0x3f6f44,.7)); this.mapLayers.push(this.add.ellipse(x+14,y-28,34,16,0x4f8652,.7));};
+    const addLava=(x,y)=>{this.mapLayers.push(this.add.ellipse(x,y,70,20,0xff6a2a,.45)); this.mapLayers.push(this.add.ellipse(x,y,36,11,0xffc16a,.65));};
+    const addRuin=(x,y)=>{this.mapLayers.push(this.add.rectangle(x,y,38,62,0x6e7768,.55).setStrokeStyle(2,0x323c31,.8));};
+    if(['jungle','ruins','citadel'].includes(mapId)){ [[70,100],[1180,640],[1060,520],[180,600]].forEach(([x,y])=>addPalm(x,y)); }
+    if(['canyon','volcano','crater','core'].includes(mapId)){ [[120,90,42],[1140,610,50],[280,620,36],[980,110,32]].forEach(([x,y,s])=>addRock(x,y,s,0x594233)); }
+    if(['volcano','core'].includes(mapId)){ [[170,180],[1110,510],[880,140]].forEach(([x,y])=>addLava(x,y)); }
+    if(['ruins','citadel'].includes(mapId)){ [[102,180],[1170,470],[940,620]].forEach(([x,y])=>addRuin(x,y)); }
+    if(['river','marsh','night'].includes(mapId)){ this.mapLayers.push(this.add.ellipse(1080,620,260,72,0x2a5f89,.3)); this.mapLayers.push(this.add.ellipse(240,90,200,54,0x2c6e9e,.22)); }
+  }
+  createInMapHud(){ this.hudCredits=this.add.text(1248,18,'CREDITS 0',{fontSize:'23px',fontStyle:'bold',color:'#f4ffe6',backgroundColor:'#00190fb0',padding:{x:10,y:6}}).setOrigin(1,0).setDepth(20); this.hudLives=this.add.text(1248,62,'LIVES 0',{fontSize:'23px',fontStyle:'bold',color:'#ffe1d7',backgroundColor:'#241007c4',padding:{x:10,y:6}}).setOrigin(1,0).setDepth(20); this.hudWave=this.add.text(1248,674,'WAVE 0/10',{fontSize:'21px',fontStyle:'bold',color:'#dbf8ff',backgroundColor:'#08182cb8',padding:{x:10,y:6}}).setOrigin(1,1).setDepth(20); }
+  refreshInMapHud(){ if(!this.hudCredits)return; this.hudCredits.setText(`CREDITS ${STATE.credits}`); this.hudLives.setText(`LIVES ${STATE.lives}`); this.hudWave.setText(`WAVE ${STATE.wave}/${STATE.maxWaves}`); }
+  playStoryCard(title, body, onClose){ const bg=this.add.rectangle(640,360,900,260,0x050805,.93).setStrokeStyle(3,0xa6ff91).setDepth(40); const t1=this.add.text(640,286,title,{fontSize:'38px',fontStyle:'bold',color:'#d9ffc5'}).setOrigin(.5).setDepth(41); const t2=this.add.text(640,350,body,{fontSize:'24px',color:'#ecffee',wordWrap:{width:820},align:'center'}).setOrigin(.5).setDepth(41); const t3=this.add.text(640,438,'Click to continue',{fontSize:'18px',color:'#ffeaa2'}).setOrigin(.5).setDepth(41); const t4=this.add.text(640,466,'Press Esc to skip story',{fontSize:'14px',color:'#c4ffd2'}).setOrigin(.5).setDepth(41); const close=()=>{[bg,t1,t2,t3,t4].forEach(x=>x.destroy()); this.input.keyboard?.off('keydown-ESC',close); onClose?.();}; this.input.keyboard?.once('keydown-ESC',close); [bg,t1,t2,t3,t4].forEach(o=>o.setInteractive({useHandCursor:true}).on('pointerdown',close)); }
+  playSequence(cards, done){ const wasPaused=STATE.paused; STATE.paused=true; UI.render(); const queue=[...cards]; const next=()=>{ const item=queue.shift(); if(!item){STATE.paused=wasPaused; UI.render(); done?.();return;} this.playStoryCard(item.title,item.body,next); }; next(); }
+  playMissionSequence(){ if(PROGRESS.storySeen?.[STATE.mapId])return; const map=MAPS.find(m=>m.id===STATE.mapId); const cards=[{title:'Campaign Brief',body:`Operation Laughing Lizard: Sector ${mapName()} (${mapConfig().label})`},{title:`Map ${MAPS.findIndex(m=>m.id===STATE.mapId)+1}: ${map?.name||''}`,body:storyForMap(STATE.mapId)}]; this.playSequence(cards,()=>{PROGRESS.storySeen[STATE.mapId]=true; saveProgress();}); }
   createPads(){ this.pads.forEach(p=>{p.glow?.destroy();p.core?.destroy();p.destroy();}); this.pads=[]; padPositions().forEach(([x,y])=>{ const pad=this.add.circle(x,y,35,0x22362e).setStrokeStyle(5,0x95c9a5); pad.xp=x; pad.yp=y; pad.tower=null; pad.setInteractive({useHandCursor:true}); pad.on('pointerdown',()=>this.buildTower(pad)); pad.glow=this.add.circle(x,y,47,0x9cff7d,.04); pad.core=this.add.circle(x,y,10,0xa7ff8f,.72); this.pads.push(pad); }); }
   highlightPads(){ this.pads.forEach(p=>{ const affordable=STATE.credits>=TOWERS[STATE.type].cost&&!p.tower; p.setStrokeStyle(affordable?6:4,affordable?0xb8ff9d:0x547060); if(p.glow)p.glow.setAlpha(affordable?.12:.025); }); }
   buildTower(pad){ if(pad.tower||STATE.over)return; const def=TOWERS[STATE.type]; if(STATE.credits<def.cost){UI.log(`Need $${def.cost} for ${def.name}.`);return;} STATE.credits-=def.cost; const tower=new Tower(this,pad,STATE.type); pad.tower=tower; this.towers.push(tower); this.selectTower(tower); this.floatText(pad.xp,pad.yp-46,`${def.name} built`,0xa7ff8f); UI.log(`${def.name} built. ${def.perk}.`); UI.render(); this.highlightPads(); }
@@ -114,7 +165,7 @@ class GameScene extends Phaser.Scene {
   bossWarning(){ const bg=this.add.rectangle(640,110,680,76,0x3b120d,.88).setStrokeStyle(3,0xff886e); const tx=this.add.text(640,110,'⚠ REX ALPHA INBOUND ⚠',{fontSize:'34px',fontStyle:'bold',color:'#ffd1c4'}).setOrigin(.5); this.cameras.main.shake(700,.009); this.tweens.add({targets:[bg,tx],alpha:0,delay:1300,duration:700,onComplete:()=>{bg.destroy();tx.destroy();}}); }
   spawn(delta){ if(STATE.activeWaves<=0)return; STATE.timer-=delta*STATE.speed; if(STATE.timer>0||STATE.queue.length===0)return; const enemy=new Enemy(this,STATE.queue.shift()); this.enemies.push(enemy); if(enemy.elite)this.floatText(enemy.x+75,enemy.y-20,'ELITE',0xffd86d); if(enemy.type==='rex')this.cameras.main.shake(600,.008); STATE.timer=STATE.wave===STATE.maxWaves?430:650; }
   allWavesComplete(){ STATE.active=false; STATE.activeWaves=0; STATE.credits+=45+STATE.wave*8+STATE.elitesDefeated*5; updateProgress(); if(STATE.wave>=STATE.maxWaves){this.endGame(true);return;} UI.log(`Area clear. ${nextUnlockText()} Elite takedowns: ${STATE.elitesDefeated}.`); UI.render(); this.highlightPads(); }
-  endGame(win){ STATE.over=true; STATE.active=false; STATE.activeWaves=0; updateProgress(); const stars=win?'★'.repeat(rating()):''; UI.log(win?`${mapName()} secured ${stars}. ${nextUnlockText()}`:'Outpost overrun. Upgrade more towers and try again.'); this.add.rectangle(640,360,670,210,0x06100d,.9).setStrokeStyle(3,win?0xa7ff8f:0xff7760); this.add.text(640,323,win?'SECTOR SECURED':'CONTAINMENT FAILED',{fontSize:'42px',fontStyle:'bold',color:win?'#d9ffc1':'#ffb3a1'}).setOrigin(.5); this.add.text(640,375,win?`${stars}  Lives ${STATE.lives}/20  ·  ${nextUnlockText()}`:'Try again: dinosaurs now have tougher hides.',{fontSize:'20px',fontStyle:'bold',color:'#eef7f0'}).setOrigin(.5); UI.render(); }
+  endGame(win){ STATE.over=true; STATE.active=false; STATE.activeWaves=0; updateProgress(); const stars=win?'★'.repeat(rating()):''; UI.log(win?`${mapName()} secured ${stars}. ${nextUnlockText()}`:'Outpost overrun. Upgrade more towers and try again.'); this.add.rectangle(640,360,670,210,0x06100d,.9).setStrokeStyle(3,win?0xa7ff8f:0xff7760); this.add.text(640,323,win?'SECTOR SECURED':'CONTAINMENT FAILED',{fontSize:'42px',fontStyle:'bold',color:win?'#d9ffc1':'#ffb3a1'}).setOrigin(.5); this.add.text(640,375,win?`${stars}  Lives ${STATE.lives}/20`:'Try again: dinosaurs now have tougher hides.',{fontSize:'20px',fontStyle:'bold',color:'#eef7f0'}).setOrigin(.5); if(win){ const next=nextMap(); const narrative=STORY_BEATS[MAPS.findIndex(m=>m.id===STATE.mapId)+1]||STORY_BEATS[STORY_BEATS.length-1]; this.time.delayedCall(900,()=>this.playSequence([{title:next?`Story: ${next.name}`:'To Be Continued',body:narrative}],next?()=>{STATE.mapId=next.id; PROGRESS.currentMap=next.id; saveProgress(); window.location.reload();}:undefined)); } UI.render(); this.refreshInMapHud(); }
   pulse(x,y,color,r){ const c=this.add.circle(x,y,8,color,.22).setStrokeStyle(2,color,.5); this.tweens.add({targets:c,radius:r,alpha:0,duration:340,onComplete:()=>c.destroy()}); }
   floatText(x,y,text,color){ const t=this.add.text(x,y,text,{fontSize:'13px',fontStyle:'bold',color:'#'+color.toString(16).padStart(6,'0')}).setOrigin(.5).setAlpha(.95); this.tweens.add({targets:t,y:y-24,alpha:0,duration:700,onComplete:()=>t.destroy()}); }
 }
